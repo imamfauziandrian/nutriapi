@@ -1,0 +1,16 @@
+{
+  "name": "nutriapi-csv-converter",
+  "version": "1.0.0",
+  "description": "Convert CSV nutritional data files to JSON",
+  "type": "module",
+  "scripts": {
+    "convert": "npx tsx src/convert.ts",
+    "merge": "npx tsx src/merge.ts",
+    "build:all": "npx tsx src/convert.ts && npx tsx src/merge.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
