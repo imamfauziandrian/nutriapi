@@ -1,940 +1,362 @@
 <!doctype html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta
-            name="description"
-            content="nutriapi — Indonesian Nutrition Data API. REST API for food nutrition data from TKPI and USDA."
-        />
-        <title>nutriapi — Indonesian Nutrition Data API</title>
-        <style>
-            /* ------------------------------------------------
-       Reset & Base
-    ------------------------------------------------ */
-            *,
-            *::before,
-            *::after {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-            }
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="nutriapi — Indonesian Nutrition Data API" />
+    <title>nutriapi — Indonesian Nutrition Data API</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: "#eff6ff", 500: "#3b82f6", 600: "#2563eb", 700: "#1d4ed8" },
+                        surface: { light: "#ffffff", dark: "#1e1e2e" },
+                        bg: { light: "#f9fafb", dark: "#11111b" },
+                    },
+                    fontFamily: {
+                        mono: ["SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", "Menlo", "monospace"],
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        @layer base {
+            body { @apply bg-white text-gray-900 dark:bg-[#11111b] dark:text-gray-100; }
+            pre { @apply bg-gray-50 dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-xl p-5 overflow-x-auto text-sm leading-relaxed; }
+            code { @apply font-mono; }
+            pre code { @apply bg-transparent p-0 text-gray-800 dark:text-gray-200; }
+            :not(pre) > code { @apply bg-gray-100 dark:bg-gray-800 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded text-sm; }
+        }
 
-            :root {
-                --bg: #f8f9fb;
-                --surface: #ffffff;
-                --border: #e2e5eb;
-                --text: #1a1d24;
-                --text-dim: #6b7280;
-                --accent: #2563eb;
-                --accent-bg: #eff3ff;
-                --code-bg: #f1f3f6;
-                --green: #059669;
-                --amber: #d97706;
-            }
+        /* Fade-in animation */
+        @keyframes fade-up {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-up { animation: fade-up 0.5s ease-out both; }
+        .animate-fade-up:nth-child(1) { animation-delay: 0ms; }
+        .animate-fade-up:nth-child(2) { animation-delay: 80ms; }
+        .animate-fade-up:nth-child(3) { animation-delay: 160ms; }
+        .animate-fade-up:nth-child(4) { animation-delay: 240ms; }
+        .animate-fade-up:nth-child(5) { animation-delay: 320ms; }
+    </style>
+</head>
+<body class="antialiased">
 
-            @media (prefers-color-scheme: dark) {
-                :root {
-                    --bg: #0f1117;
-                    --surface: #1a1d28;
-                    --border: #2e3348;
-                    --text: #e4e6ef;
-                    --text-dim: #9198a8;
-                    --accent: #5890ff;
-                    --accent-bg: #1e2745;
-                    --code-bg: #232738;
-                    --green: #34d399;
-                    --amber: #fbbf24;
-                }
-            }
+<div class="max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
 
-            html {
-                font-size: 16px;
-                scroll-behavior: smooth;
-            }
-
-            body {
-                font-family:
-                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-                    Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial,
-                    sans-serif;
-                background: var(--bg);
-                color: var(--text);
-                line-height: 1.65;
-            }
-
-            a {
-                color: var(--accent);
-                text-decoration: none;
-            }
-            a:hover {
-                text-decoration: underline;
-            }
-            img {
-                max-width: 100%;
-                display: block;
-            }
-
-            /* ------------------------------------------------
-       Layout
-    ------------------------------------------------ */
-            .container {
-                max-width: 920px;
-                margin: 0 auto;
-                padding: 2rem 1.5rem 4rem;
-            }
-
-            /* ------------------------------------------------
-       Hero
-    ------------------------------------------------ */
-            .hero {
-                text-align: center;
-                padding: 3rem 0 2.5rem;
-            }
-
-            .hero h1 {
-                font-size: 2.6rem;
-                font-weight: 800;
-                letter-spacing: -0.03em;
-            }
-
-            .hero h1 span {
-                color: var(--accent);
-            }
-
-            .hero p {
-                margin-top: 0.75rem;
-                font-size: 1.15rem;
-                color: var(--text-dim);
-                max-width: 600px;
-                margin-inline: auto;
-            }
-
-            .hero .badges {
-                margin-top: 1.25rem;
-                display: flex;
-                justify-content: center;
-                flex-wrap: wrap;
-                gap: 0.5rem;
-            }
-
-            .hero .repo-link {
-                display: inline-block;
-                margin-top: 1rem;
-                font-size: 0.9rem;
-                color: var(--text-dim);
-            }
-            .hero .repo-link a {
-                color: var(--accent);
-                font-weight: 600;
-            }
-            .hero .repo-link .star-icon {
-                display: inline-block;
-                transition: transform 0.2s;
-            }
-            .hero .repo-link a:hover .star-icon {
-                transform: scale(1.3);
-            }
-
-            .badge {
-                display: inline-block;
-                padding: 0.25rem 0.85rem;
-                border-radius: 999px;
-                font-size: 0.8rem;
-                font-weight: 600;
-                background: var(--accent-bg);
-                color: var(--accent);
-                border: 1px solid
-                    color-mix(in srgb, var(--accent) 30%, transparent);
-            }
-
-            /* ------------------------------------------------
-       Section
-    ------------------------------------------------ */
-            section {
-                margin-top: 2.75rem;
-            }
-
-            h2 {
-                font-size: 1.45rem;
-                font-weight: 700;
-                margin-bottom: 0.75rem;
-                padding-bottom: 0.4rem;
-                border-bottom: 2px solid var(--border);
-            }
-
-            h3 {
-                font-size: 1.1rem;
-                font-weight: 600;
-                margin-top: 1.5rem;
-                margin-bottom: 0.4rem;
-            }
-
-            p,
-            li {
-                color: var(--text);
-            }
-            p + p {
-                margin-top: 0.75rem;
-            }
-
-            /* ------------------------------------------------
-       Cards / Table
-    ------------------------------------------------ */
-            .card {
-                background: var(--surface);
-                border: 1px solid var(--border);
-                border-radius: 12px;
-                padding: 1.25rem 1.5rem;
-                margin-bottom: 1.25rem;
-            }
-
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                font-size: 0.9rem;
-            }
-
-            th,
-            td {
-                text-align: left;
-                padding: 0.6rem 0.75rem;
-                border-bottom: 1px solid var(--border);
-            }
-
-            th {
-                font-weight: 600;
-                font-size: 0.8rem;
-                text-transform: uppercase;
-                letter-spacing: 0.04em;
-                color: var(--text-dim);
-            }
-
-            tr:last-child td {
-                border-bottom: none;
-            }
-
-            code {
-                font-family:
-                    "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", Menlo,
-                    monospace;
-                font-size: 0.85em;
-                background: var(--code-bg);
-                padding: 0.15em 0.45em;
-                border-radius: 4px;
-            }
-
-            pre {
-                background: var(--surface);
-                border: 1px solid var(--border);
-                border-radius: 10px;
-                padding: 1rem 1.25rem;
-                overflow-x: auto;
-                font-size: 0.85rem;
-                line-height: 1.55;
-            }
-
-            pre code {
-                background: transparent;
-                padding: 0;
-                border-radius: 0;
-            }
-
-            /* ------------------------------------------------
-       SVG Pipeline
-    ------------------------------------------------ */
-            .pipeline-svg-wrapper {
-                display: flex;
-                justify-content: center;
-                padding: 0.5rem 0;
-            }
-
-            .pipeline-svg-wrapper svg {
-                width: 100%;
-                height: auto;
-                max-width: 760px;
-            }
-
-            /* ------------------------------------------------
-       Endpoint list
-    ------------------------------------------------ */
-            .endpoint {
-                display: flex;
-                align-items: baseline;
-                gap: 0.75rem;
-                padding: 0.55rem 0;
-                border-bottom: 1px solid var(--border);
-                font-size: 0.9rem;
-            }
-            .endpoint:last-child {
-                border-bottom: none;
-            }
-
-            .method {
-                font-weight: 700;
-                font-size: 0.75rem;
-                padding: 0.2rem 0.5rem;
-                border-radius: 4px;
-                text-transform: uppercase;
-                color: #fff;
-                background: var(--accent);
-                flex-shrink: 0;
-            }
-
-            .method.get {
-                background: var(--accent);
-            }
-            .url {
-                font-family: monospace;
-                color: var(--accent);
-            }
-            .desc {
-                color: var(--text-dim);
-                font-size: 0.85rem;
-            }
-
-            /* ------------------------------------------------
-       Footer
-    ------------------------------------------------ */
-            footer {
-                margin-top: 3.5rem;
-                padding-top: 1.5rem;
-                border-top: 1px solid var(--border);
-                text-align: center;
-                color: var(--text-dim);
-                font-size: 0.85rem;
-            }
-            footer a {
-                color: var(--text-dim);
-            }
-            footer a:hover {
-                color: var(--accent);
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <!-- =============================================
-       Hero
-  ============================================= -->
-            <header class="hero">
-                <h1>nutri<span>api</span></h1>
-                <p>
-                    REST API for Indonesian food nutrition data — open-source,
-                    <br />ready to use via Docker.
-                </p>
-                <div class="badges">
-                    <span class="badge">🍎 TKPI + USDA</span>
-                    <span class="badge">🐳 Docker</span>
-                    <span class="badge">⚡ Bun + json-server</span>
-                    <span class="badge">📦 9,938 records</span>
-                </div>
-                <div class="repo-link">
-                    <a
-                        href="https://github.com/imamfauziandrian/nutriapi"
-                        target="_blank"
-                    >
-                        <span class="star-icon">⭐</span> GitHub &nbsp;·&nbsp;
-                        Give us star!
-                    </a>
-                </div>
-            </header>
-
-            <!-- =============================================
-       Introduction
-  ============================================= -->
-            <section>
-                <h2>About</h2>
-                <div class="card">
-                    <p>
-                        <strong>nutriapi</strong> is an
-                        <em>open-source</em> project that exposes Indonesian
-                        food nutrition data through a simple REST API. Data is
-                        collected from two authoritative sources and merged into
-                        a single <code>/foods</code> endpoint, ready to be
-                        consumed by any application, website, or research
-                        project.
-                    </p>
-                    <p>
-                        Run <strong>one Docker command</strong> and the API is
-                        available at <code>localhost:3000</code> — no database
-                        setup, no complex installation.
-                    </p>
-                </div>
-            </section>
-
-            <!-- =============================================
-       REST API
-  ============================================= -->
-            <section>
-                <h2>REST API</h2>
-                <div class="card">
-                    <div class="endpoint">
-                        <span class="method get">GET</span>
-                        <span class="url"
-                            ><a href="/foods" target="_blank">/foods</a></span
-                        >
-                        <span class="desc">All food records</span>
-                    </div>
-                    <div class="endpoint">
-                        <span class="method get">GET</span>
-                        <span class="url"
-                            ><a href="/foods/1" target="_blank"
-                                >/foods/:id</a
-                            ></span
-                        >
-                        <span class="desc"
-                            >Single record by json-server auto-assigned id</span
-                        >
-                    </div>
-                    <div class="endpoint">
-                        <span class="method get">GET</span>
-                        <span class="url"
-                            ><a href="/foods?code=AP001" target="_blank"
-                                >/foods?code=AP001</a
-                            ></span
-                        >
-                        <span class="desc">Lookup by unique code</span>
-                    </div>
-                    <div class="endpoint">
-                        <span class="method get">GET</span>
-                        <span class="url"
-                            ><a href="/foods?name_like=rice" target="_blank"
-                                >/foods?name_like=rice</a
-                            ></span
-                        >
-                        <span class="desc">Substring (regex) search on name</span>
-                    </div>
-                    <div class="endpoint">
-                        <span class="method get">GET</span>
-                        <span class="url"
-                            ><a href="/foods?calories_gte=0&amp;calories_lte=100" target="_blank"
-                                >/foods?calories_gte=0&amp;calories_lte=100</a
-                            ></span
-                        >
-                        <span class="desc">Range filter (0–100 kcal)</span>
-                    </div>
-                    <div class="endpoint">
-                        <span class="method get">GET</span>
-                        <span class="url"
-                            ><a
-                                href="/foods?_page=1&amp;_limit=20"
-                                target="_blank"
-                                >/foods?_page=1&amp;_limit=20</a
-                            ></span
-                        >
-                        <span class="desc">Pagination</span>
-                    </div>
-                </div>
-                <p style="font-size: 0.9rem; color: var(--text-dim)">
-                    All endpoints are <strong>read-only</strong> (<code>--read-only</code> mode). Static files from <code>./public/</code> are served at <code>GET /</code>.
-                </p>
-            </section>
-
-            <!-- =============================================
-       Data Structure
-  ============================================= -->
-            <section>
-                <h2>Data Structure</h2>
-                <div class="card">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Field</th>
-                                <th>Type</th>
-                                <th>Description</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><code>code</code></td>
-                                <td>string</td>
-                                <td>Unique food identifier</td>
-                            </tr>
-                            <tr>
-                                <td><code>name</code></td>
-                                <td>string</td>
-                                <td>Food name</td>
-                            </tr>
-                            <tr>
-                                <td><code>calories</code></td>
-                                <td>number</td>
-                                <td>Energy (kcal)</td>
-                            </tr>
-                            <tr>
-                                <td><code>protein</code></td>
-                                <td>number</td>
-                                <td>Protein (g)</td>
-                            </tr>
-                            <tr>
-                                <td><code>fat</code></td>
-                                <td>number</td>
-                                <td>Total fat (g)</td>
-                            </tr>
-                            <tr>
-                                <td><code>carbo</code></td>
-                                <td>number</td>
-                                <td>Carbohydrates (g)</td>
-                            </tr>
-                            <tr>
-                                <td><code>fiber</code></td>
-                                <td>number</td>
-                                <td>Dietary fiber (g)</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <p
-                        style="
-                            margin-top: 0.75rem;
-                            font-size: 0.9rem;
-                            color: var(--text-dim);
-                        "
-                    >
-                        Missing values (<code>-</code> in CSV) default to
-                        <code>0</code>.
-                    </p>
-                </div>
-            </section>
-
-            <!-- =============================================
-       Data Sources
-  ============================================= -->
-            <section>
-                <h2>Data Sources</h2>
-                <div class="card">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Source</th>
-                                <th>Records</th>
-                                <th>Description</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><strong>TKPI</strong></td>
-                                <td>1,148</td>
-                                <td>
-                                    <em>Tabel Komposisi Pangan Indonesia</em> —
-                                    local Indonesian food data
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>USDA</strong></td>
-                                <td>8,790</td>
-                                <td>
-                                    USDA National Nutrient Database (via
-                                    andrafarm.com)
-                                </td>
-                            </tr>
-                            <tr>
-                                <td style="font-weight: 700">Total</td>
-                                <td style="font-weight: 700">9,938</td>
-                                <td>
-                                    Merged into the <code>/foods</code> endpoint
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- =============================================
-       Data Pipeline (SVG)
-  ============================================= -->
-            <section>
-                <h2>Data Pipeline</h2>
-                <div class="card">
-                    <div class="pipeline-svg-wrapper">
-                        <svg
-                            viewBox="0 0 820 180"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <!-- define arrow marker -->
-                            <defs>
-                                <marker
-                                    id="arrow"
-                                    markerWidth="10"
-                                    markerHeight="8"
-                                    refX="10"
-                                    refY="4"
-                                    orient="auto"
-                                >
-                                    <path
-                                        d="M0 0 L10 4 L0 8 Z"
-                                        fill="var(--accent, #2563eb)"
-                                    />
-                                </marker>
-                                <marker
-                                    id="arrow-dim"
-                                    markerWidth="10"
-                                    markerHeight="8"
-                                    refX="10"
-                                    refY="4"
-                                    orient="auto"
-                                >
-                                    <path
-                                        d="M0 0 L10 4 L0 8 Z"
-                                        fill="var(--border, #e2e5eb)"
-                                    />
-                                </marker>
-                            </defs>
-
-                            <!-- background -->
-                            <rect
-                                width="820"
-                                height="180"
-                                rx="8"
-                                fill="var(--surface, #fff)"
-                            />
-
-                            <!-- NODE 1: CSV files -->
-                            <rect
-                                x="28"
-                                y="60"
-                                width="140"
-                                height="56"
-                                rx="10"
-                                fill="var(--accent-bg, #eff3ff)"
-                                stroke="var(--accent, #2563eb)"
-                                stroke-width="1.8"
-                            />
-                            <text
-                                x="98"
-                                y="86"
-                                text-anchor="middle"
-                                fill="var(--accent, #2563eb)"
-                                font-size="13"
-                                font-weight="700"
-                                font-family="SF Mono, monospace"
-                            >
-                                data/raw/*.csv
-                            </text>
-                            <text
-                                x="98"
-                                y="102"
-                                text-anchor="middle"
-                                fill="var(--text-dim, #6b7280)"
-                                font-size="11"
-                                font-family="system-ui, sans-serif"
-                            >
-                                TKPI + USDA
-                            </text>
-
-                            <!-- Arrow 1 -->
-                            <line
-                                x1="168"
-                                y1="88"
-                                x2="224"
-                                y2="88"
-                                stroke="var(--accent, #2563eb)"
-                                stroke-width="2"
-                                marker-end="url(#arrow)"
-                            />
-
-                            <!-- NODE 2: convert.ts -->
-                            <rect
-                                x="228"
-                                y="54"
-                                width="150"
-                                height="68"
-                                rx="10"
-                                fill="var(--surface, #fff)"
-                                stroke="var(--border, #e2e5eb)"
-                                stroke-width="1.8"
-                            />
-                            <text
-                                x="303"
-                                y="80"
-                                text-anchor="middle"
-                                fill="var(--text, #1a1d24)"
-                                font-size="13"
-                                font-weight="700"
-                                font-family="SF Mono, monospace"
-                            >
-                                src/convert.ts
-                            </text>
-                            <text
-                                x="303"
-                                y="96"
-                                text-anchor="middle"
-                                fill="var(--text-dim, #6b7280)"
-                                font-size="10"
-                                font-family="system-ui, sans-serif"
-                            >
-                                Parse CSV (; separator,
-                            </text>
-                            <text
-                                x="303"
-                                y="110"
-                                text-anchor="middle"
-                                fill="var(--text-dim, #6b7280)"
-                                font-size="10"
-                                font-family="system-ui, sans-serif"
-                            >
-                                comma decimal, - → 0)
-                            </text>
-
-                            <!-- Arrow 2 -->
-                            <line
-                                x1="378"
-                                y1="88"
-                                x2="434"
-                                y2="88"
-                                stroke="var(--accent, #2563eb)"
-                                stroke-width="2"
-                                marker-end="url(#arrow)"
-                            />
-
-                            <!-- NODE 3: JSON files -->
-                            <rect
-                                x="438"
-                                y="60"
-                                width="140"
-                                height="56"
-                                rx="10"
-                                fill="var(--accent-bg, #eff3ff)"
-                                stroke="var(--accent, #2563eb)"
-                                stroke-width="1.8"
-                            />
-                            <text
-                                x="508"
-                                y="86"
-                                text-anchor="middle"
-                                fill="var(--accent, #2563eb)"
-                                font-size="13"
-                                font-weight="700"
-                                font-family="SF Mono, monospace"
-                            >
-                                data/json/*.json
-                            </text>
-                            <text
-                                x="508"
-                                y="102"
-                                text-anchor="middle"
-                                fill="var(--text-dim, #6b7280)"
-                                font-size="11"
-                                font-family="system-ui, sans-serif"
-                            >
-                                Per-file JSON
-                            </text>
-
-                            <!-- Vertical arrow down -->
-                            <line
-                                x1="508"
-                                y1="116"
-                                x2="508"
-                                y2="140"
-                                stroke="var(--border, #e2e5eb)"
-                                stroke-width="2"
-                                marker-end="url(#arrow-dim)"
-                            />
-
-                            <!-- NODE 4: merge.ts -->
-                            <rect
-                                x="438"
-                                y="140"
-                                width="140"
-                                height="28"
-                                rx="8"
-                                fill="var(--surface, #fff)"
-                                stroke="var(--border, #e2e5eb)"
-                                stroke-width="1.8"
-                            />
-                            <text
-                                x="508"
-                                y="158"
-                                text-anchor="middle"
-                                fill="var(--text, #1a1d24)"
-                                font-size="11"
-                                font-weight="600"
-                                font-family="SF Mono, monospace"
-                            >
-                                src/merge.ts (dedup)
-                            </text>
-
-                            <!-- Arrow from merge to right -->
-                            <line
-                                x1="578"
-                                y1="154"
-                                x2="624"
-                                y2="154"
-                                stroke="var(--accent, #2563eb)"
-                                stroke-width="2"
-                                marker-end="url(#arrow)"
-                            />
-
-                            <!-- NODE 5: db.json -->
-                            <rect
-                                x="628"
-                                y="130"
-                                width="110"
-                                height="48"
-                                rx="10"
-                                fill="var(--accent-bg, #eff3ff)"
-                                stroke="var(--accent, #2563eb)"
-                                stroke-width="1.8"
-                            />
-                            <text
-                                x="683"
-                                y="152"
-                                text-anchor="middle"
-                                fill="var(--accent, #2563eb)"
-                                font-size="13"
-                                font-weight="700"
-                                font-family="SF Mono, monospace"
-                            >
-                                db.json
-                            </text>
-                            <text
-                                x="683"
-                                y="168"
-                                text-anchor="middle"
-                                fill="var(--text-dim, #6b7280)"
-                                font-size="10"
-                                font-family="system-ui, sans-serif"
-                            >
-                                { "foods": [...] }
-                            </text>
-
-                            <!-- Arrow from db.json to /foods -->
-                            <line
-                                x1="683"
-                                y1="130"
-                                x2="683"
-                                y2="88"
-                                stroke="var(--green, #059669)"
-                                stroke-width="2"
-                                marker-end="url(#arrow)"
-                            />
-
-                            <!-- NODE 6: /foods endpoint (centered above db.json) -->
-                            <rect
-                                x="638"
-                                y="44"
-                                width="90"
-                                height="36"
-                                rx="18"
-                                fill="var(--green, #059669)"
-                            />
-                            <text
-                                x="683"
-                                y="67"
-                                text-anchor="middle"
-                                fill="#fff"
-                                font-size="12"
-                                font-weight="700"
-                                font-family="SF Mono, monospace"
-                            >
-                                /foods
-                            </text>
-
-                            <!-- Step labels -->
-                            <text
-                                x="98"
-                                y="38"
-                                text-anchor="middle"
-                                fill="var(--text-dim, #6b7280)"
-                                font-size="10"
-                                font-weight="600"
-                                font-family="system-ui, sans-serif"
-                            >
-                                ① Raw CSVs
-                            </text>
-                            <text
-                                x="303"
-                                y="38"
-                                text-anchor="middle"
-                                fill="var(--text-dim, #6b7280)"
-                                font-size="10"
-                                font-weight="600"
-                                font-family="system-ui, sans-serif"
-                            >
-                                ② Convert
-                            </text>
-                            <text
-                                x="508"
-                                y="38"
-                                text-anchor="middle"
-                                fill="var(--text-dim, #6b7280)"
-                                font-size="10"
-                                font-weight="600"
-                                font-family="system-ui, sans-serif"
-                            >
-                                ③ Per-file JSON
-                            </text>
-                            <text
-                                x="683"
-                                y="28"
-                                text-anchor="middle"
-                                fill="var(--text-dim, #6b7280)"
-                                font-size="10"
-                                font-weight="600"
-                                font-family="system-ui, sans-serif"
-                            >
-                                ④ Merge &amp; Serve
-                            </text>
-                        </svg>
-                    </div>
-                    <p
-                        style="
-                            margin-top: 0.75rem;
-                            font-size: 0.9rem;
-                            color: var(--text-dim);
-                        "
-                    >
-                        CSV format: separator <code>;</code> (semicolon),
-                        decimal <code>,</code> (comma), missing values
-                        <code>-</code> become <code>0</code> for nutrition
-                        columns.
-                    </p>
-                </div>
-            </section>
-
-            <!-- =============================================
-       Contributing
-  ============================================= -->
-            <section>
-                <h2>Contributing</h2>
-                <div class="card">
-                    <p>
-                        This is an <strong>open-source</strong> project and
-                        contributions are welcome! Here are some ideas:
-                    </p>
-                    <ul style="padding-left: 1.25rem; margin-top: 0.5rem">
-                        <li>
-                            Add new data sources (e.g.
-                            <em>Asia Food Composition</em>)
-                        </li>
-                        <li>Update TKPI / USDA to the latest version</li>
-                        <li>
-                            Add additional nutrition fields (vitamins, minerals)
-                        </li>
-                        <li>Build a client library (Python, JS, Go, etc.)</li>
-                        <li>Fix bugs or improve performance</li>
-                    </ul>
-                    <p style="margin-top: 0.75rem">
-                        Repository:
-                        <a
-                            href="https://github.com/imamfauziandrian/nutriapi"
-                            target="_blank"
-                        >
-                            github.com/imamfauziandrian/nutriapi
-                        </a>
-                    </p>
-                </div>
-            </section>
-
-            <!-- =============================================
-       Footer
-  ============================================= -->
-            <footer>
-                <p>
-                    nutriapi — Open-source Indonesian Nutrition Data API
-                    &nbsp;·&nbsp; Built with ❤️
-                </p>
-            </footer>
+    <!-- ===== HERO ===== -->
+    <header class="text-center mb-16 animate-fade-up">
+        <h1 class="text-5xl sm:text-6xl font-extrabold tracking-tight">
+            <span class="text-gray-900 dark:text-white">nutri</span><span class="text-blue-600 dark:text-blue-400">api</span>
+        </h1>
+        <p class="mt-4 text-lg text-gray-500 dark:text-gray-400 max-w-lg mx-auto">
+            REST API untuk data nutrisi pangan Indonesia &mdash; <span class="font-semibold text-gray-700 dark:text-gray-300">9.938</span> data dari TKPI &amp; USDA.
+        </p>
+        <div class="mt-5">
+            <a href="https://github.com/imamfauziandrian/nutriapi" target="_blank"
+               class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:opacity-90 transition-opacity">
+                ⭐ Beri bintang di GitHub
+            </a>
         </div>
-    </body>
+    </header>
+
+    <!-- ===== BASE URL ===== -->
+    <section class="mb-14 animate-fade-up">
+        <div class="flex items-center gap-3 p-4 bg-gray-50 dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-xl">
+            <span class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider shrink-0">Base URL</span>
+            <code class="text-blue-600 dark:text-blue-400 font-mono font-semibold text-sm break-all">https://nutriapi.konfig.id</code>
+        </div>
+        <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">
+            Semua endpoint mengembalikan <code>Content-Type: application/json</code> dan mendukung <code>CORS</code>.
+        </p>
+    </section>
+
+    <!-- ===== ENDPOINTS ===== -->
+
+    <!-- Health -->
+    <section class="mb-12 animate-fade-up">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
+            <span class="w-1 h-6 bg-blue-600 dark:bg-blue-400 rounded-full inline-block"></span>
+            Health Check
+        </h2>
+        <div class="bg-white dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+            <div class="flex flex-wrap items-center gap-2 sm:gap-4 px-5 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-[#1e1e2e]/50">
+                <span class="inline-flex font-bold text-xs px-2 py-0.5 rounded bg-blue-600 text-white uppercase">GET</span>
+                <code class="text-blue-600 dark:text-blue-400 font-mono font-semibold text-sm">/health</code>
+                <span class="text-gray-500 dark:text-gray-400 text-sm ml-auto">Status server</span>
+            </div>
+            <div class="p-5 space-y-3">
+                <div class="flex items-center gap-2 text-sm">
+                    <span class="inline-flex font-bold text-xs px-2 py-0.5 rounded bg-emerald-500 text-white">200</span>
+                    <span class="text-gray-500 dark:text-gray-400">OK</span>
+                </div>
+                <pre class="bg-gray-50 dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-lg p-4 overflow-x-auto text-xs leading-relaxed"><code class="text-gray-800 dark:text-gray-200 whitespace-pre">{"status":"ok"}</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- List Foods -->
+    <section class="mb-12 animate-fade-up">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
+            <span class="w-1 h-6 bg-blue-600 dark:bg-blue-400 rounded-full inline-block"></span>
+            List &amp; Paginasi
+        </h2>
+        <div class="bg-white dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+            <div class="flex flex-wrap items-center gap-2 sm:gap-4 px-5 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-[#1e1e2e]/50">
+                <span class="inline-flex font-bold text-xs px-2 py-0.5 rounded bg-blue-600 text-white uppercase">GET</span>
+                <code class="text-blue-600 dark:text-blue-400 font-mono font-semibold text-sm">/foods</code>
+                <a href="/foods" target="_blank" class="ml-auto text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">Coba &rarr;</a>
+            </div>
+            <div class="p-5 space-y-5">
+                <!-- Params -->
+                <div>
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">Parameter Query</h4>
+                    <table class="w-full text-sm">
+                        <thead><tr class="text-left text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wider"><th class="pr-4 py-2 font-semibold">Param</th><th class="pr-4 py-2 font-semibold">Tipe</th><th class="pr-4 py-2 font-semibold">Default</th><th class="py-2 font-semibold">Deskripsi</th></tr></thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                            <tr><td class="pr-4 py-2.5"><code>_page</code></td><td class="pr-4 py-2.5 text-gray-500">number</td><td class="pr-4 py-2.5">1</td><td class="py-2.5 text-gray-500">Nomor halaman</td></tr>
+                            <tr><td class="pr-4 py-2.5"><code>_limit</code></td><td class="pr-4 py-2.5 text-gray-500">number</td><td class="pr-4 py-2.5">20</td><td class="py-2.5 text-gray-500">Data per halaman (max 100)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Response -->
+                <div>
+                    <div class="flex items-center gap-2 text-sm mb-2">
+                        <span class="inline-flex font-bold text-xs px-2 py-0.5 rounded bg-emerald-500 text-white">200</span>
+                        <span class="text-gray-500 dark:text-gray-400">Array <code>FoodRecord[]</code></span>
+                    </div>
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">Header Respons</h4>
+                    <table class="w-full text-sm mb-4">
+                        <thead><tr class="text-left text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wider"><th class="pr-4 py-2 font-semibold">Header</th><th class="py-2 font-semibold">Deskripsi</th></tr></thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                            <tr><td class="pr-4 py-2.5"><code>X-Total-Count</code></td><td class="py-2.5 text-gray-500">Total data</td></tr>
+                            <tr><td class="pr-4 py-2.5"><code>X-Total-Pages</code></td><td class="py-2.5 text-gray-500">Total halaman</td></tr>
+                            <tr><td class="pr-4 py-2.5"><code>X-Page</code></td><td class="py-2.5 text-gray-500">Halaman saat ini</td></tr>
+                            <tr><td class="pr-4 py-2.5"><code>X-Limit</code></td><td class="py-2.5 text-gray-500">Data per halaman</td></tr>
+                        </tbody>
+                    </table>
+                    <pre class="bg-gray-50 dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-lg p-4 overflow-x-auto text-xs leading-relaxed"><code class="text-gray-800 dark:text-gray-200 whitespace-pre">GET /foods?_page=1&amp;_limit=2
+
+[
+  { "code": "AP001", "name": "Abon Ayam", "calories": 443, "protein": 24.2, "fat": 28.4, "carbo": 28.3, "fiber": 0 },
+  { "code": "AP002", "name": "Abon Ayam (Daging Asap)", "calories": 443, "protein": 24.2, "fat": 28.4, "carbo": 28.3, "fiber": 0 }
+]
+
+X-Total-Count: 9938
+X-Total-Pages: 4969
+X-Page: 1
+X-Limit: 2</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Get by Code -->
+    <section class="mb-12 animate-fade-up">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
+            <span class="w-1 h-6 bg-blue-600 dark:bg-blue-400 rounded-full inline-block"></span>
+            Cari Berdasarkan Kode
+        </h2>
+        <div class="bg-white dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+            <div class="flex flex-wrap items-center gap-2 sm:gap-4 px-5 py-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-[#1e1e2e]/50">
+                <span class="inline-flex font-bold text-xs px-2 py-0.5 rounded bg-blue-600 text-white uppercase">GET</span>
+                <code class="text-blue-600 dark:text-blue-400 font-mono font-semibold text-sm">/foods?code=<span class="text-gray-400">{code}</span></code>
+                <a href="/foods?code=AP001" target="_blank" class="ml-auto text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">Coba &rarr;</a>
+            </div>
+            <div class="p-5 space-y-4">
+                <table class="w-full text-sm">
+                    <thead><tr class="text-left text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wider"><th class="pr-4 py-2 font-semibold">Param</th><th class="pr-4 py-2 font-semibold">Tipe</th><th class="py-2 font-semibold">Deskripsi</th></tr></thead>
+                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                        <tr><td class="pr-4 py-2.5"><code>code</code></td><td class="pr-4 py-2.5 text-gray-500">string</td><td class="py-2.5 text-gray-500">Kode unik makanan, cth: <code>AP001</code></td></tr>
+                    </tbody>
+                </table>
+                <div class="flex items-center gap-2 text-sm">
+                    <span class="inline-flex font-bold text-xs px-2 py-0.5 rounded bg-emerald-500 text-white">200</span>
+                    <span class="text-gray-500 dark:text-gray-400">Object <code>FoodRecord</code></span>
+                </div>
+                <pre class="bg-gray-50 dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-lg p-4 overflow-x-auto text-xs leading-relaxed"><code class="text-gray-800 dark:text-gray-200 whitespace-pre">GET /foods?code=AP001
+
+{
+  "code": "AP001",
+  "name": "Abon Ayam",
+  "calories": 443,
+  "protein": 24.2,
+  "fat": 28.4,
+  "carbo": 28.3,
+  "fiber": 0
+}</code></pre>
+                <div class="flex items-center gap-2 text-sm">
+                    <span class="inline-flex font-bold text-xs px-2 py-0.5 rounded bg-red-500 text-white">404</span>
+                    <span class="text-gray-500 dark:text-gray-400">Kode tidak ditemukan</span>
+                </div>
+                <pre class="bg-gray-50 dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-lg p-4 overflow-x-auto text-xs leading-relaxed"><code class="text-gray-800 dark:text-gray-200 whitespace-pre">{"error":"Food with code 'XXXXX' not found"}</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Search -->
+    <section class="mb-12 animate-fade-up">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
+            <span class="w-1 h-6 bg-blue-600 dark:bg-blue-400 rounded-full inline-block"></span>
+            Pencarian
+        </h2>
+        <div class="bg-white dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+            <div class="space-y-3 p-5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-[#1e1e2e]/50">
+                <div class="flex flex-wrap items-center gap-2 sm:gap-4">
+                    <span class="inline-flex font-bold text-xs px-2 py-0.5 rounded bg-blue-600 text-white uppercase">GET</span>
+                    <code class="text-blue-600 dark:text-blue-400 font-mono font-semibold text-sm">/foods?name_like=<span class="text-gray-400">{keyword}</span></code>
+                    <a href="/foods?name_like=ayam" target="_blank" class="ml-auto text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">Coba &rarr;</a>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 sm:gap-4">
+                    <span class="inline-flex font-bold text-xs px-2 py-0.5 rounded bg-blue-600 text-white uppercase">GET</span>
+                    <code class="text-blue-600 dark:text-blue-400 font-mono font-semibold text-sm">/search?q=<span class="text-gray-400">{keyword}</span></code>
+                    <a href="/search?q=ayam" target="_blank" class="ml-auto text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">Coba &rarr;</a>
+                </div>
+                <p class="text-sm text-gray-500 dark:text-gray-400 !mt-2">Kedua endpoint menghasilkan output yang identik.</p>
+            </div>
+            <div class="p-5 space-y-5">
+                <table class="w-full text-sm">
+                    <thead><tr class="text-left text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wider"><th class="pr-4 py-2 font-semibold">Param</th><th class="pr-4 py-2 font-semibold">Tipe</th><th class="pr-4 py-2 font-semibold">Default</th><th class="py-2 font-semibold">Deskripsi</th></tr></thead>
+                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                        <tr><td class="pr-4 py-2.5"><code>name_like</code> / <code>q</code></td><td class="pr-4 py-2.5 text-gray-500">string</td><td class="pr-4 py-2.5">&mdash;</td><td class="py-2.5 text-gray-500">Kata kunci (case-insensitive)</td></tr>
+                        <tr><td class="pr-4 py-2.5"><code>_page</code></td><td class="pr-4 py-2.5 text-gray-500">number</td><td class="pr-4 py-2.5">1</td><td class="py-2.5 text-gray-500">Halaman</td></tr>
+                        <tr><td class="pr-4 py-2.5"><code>_limit</code></td><td class="pr-4 py-2.5 text-gray-500">number</td><td class="pr-4 py-2.5">20</td><td class="py-2.5 text-gray-500">Per halaman (max 100)</td></tr>
+                    </tbody>
+                </table>
+                <div class="flex items-center gap-2 text-sm">
+                    <span class="inline-flex font-bold text-xs px-2 py-0.5 rounded bg-emerald-500 text-white">200</span>
+                    <span class="text-gray-500 dark:text-gray-400">Array <code>FoodRecord[]</code> + header paginasi</span>
+                </div>
+                <pre class="bg-gray-50 dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-lg p-4 overflow-x-auto text-xs leading-relaxed"><code class="text-gray-800 dark:text-gray-200 whitespace-pre">GET /foods?name_like=nasi&amp;_limit=2
+
+[
+  { "code": "TK096", "name": "Nasi Putih", "calories": 204, "protein": 2.3, "fat": 0.4, "carbo": 40.6, "fiber": 0.2 },
+  { "code": "TK097", "name": "Nasi Gurih", "calories": 264, "protein": 3.2, "fat": 8.5, "carbo": 39.9, "fiber": 0.3 }
+]
+
+X-Total-Count: 18
+X-Total-Pages: 9
+X-Page: 1
+X-Limit: 2</code></pre>
+                <div class="flex items-center gap-2 text-sm">
+                    <span class="inline-flex font-bold text-xs px-2 py-0.5 rounded bg-red-500 text-white">400</span>
+                    <span class="text-gray-500 dark:text-gray-400"><code>/search</code> tanpa parameter <code>q</code></span>
+                </div>
+                <pre class="bg-gray-50 dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-lg p-4 overflow-x-auto text-xs leading-relaxed"><code class="text-gray-800 dark:text-gray-200 whitespace-pre">{"error":"Missing 'q' query parameter. Example: /search?q=ayam"}</code></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== FOOD RECORD ===== -->
+    <section class="mb-14 animate-fade-up">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
+            <span class="w-1 h-6 bg-blue-600 dark:bg-blue-400 rounded-full inline-block"></span>
+            Struktur FoodRecord
+        </h2>
+        <div class="bg-white dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+            <table class="w-full text-sm">
+                <thead><tr class="text-left text-gray-400 dark:text-gray-500 text-xs uppercase tracking-wider border-b border-gray-100 dark:border-gray-800"><th class="pl-5 pr-4 py-3 font-semibold">Field</th><th class="pr-4 py-3 font-semibold">Tipe</th><th class="pr-4 py-3 font-semibold">Satuan</th><th class="py-3 font-semibold">Deskripsi</th></tr></thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                    <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"><td class="pl-5 pr-4 py-3"><code>code</code></td><td class="pr-4 py-3 text-gray-500">string</td><td class="pr-4 py-3 text-gray-400">&mdash;</td><td class="py-3 text-gray-500">Kode unik makanan</td></tr>
+                    <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"><td class="pl-5 pr-4 py-3"><code>name</code></td><td class="pr-4 py-3 text-gray-500">string</td><td class="pr-4 py-3 text-gray-400">&mdash;</td><td class="py-3 text-gray-500">Nama makanan</td></tr>
+                    <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"><td class="pl-5 pr-4 py-3"><code>calories</code></td><td class="pr-4 py-3 text-gray-500">number</td><td class="pr-4 py-3 text-gray-400">kcal</td><td class="py-3 text-gray-500">Energi</td></tr>
+                    <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"><td class="pl-5 pr-4 py-3"><code>protein</code></td><td class="pr-4 py-3 text-gray-500">number</td><td class="pr-4 py-3 text-gray-400">g</td><td class="py-3 text-gray-500">Protein</td></tr>
+                    <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"><td class="pl-5 pr-4 py-3"><code>fat</code></td><td class="pr-4 py-3 text-gray-500">number</td><td class="pr-4 py-3 text-gray-400">g</td><td class="py-3 text-gray-500">Lemak total</td></tr>
+                    <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"><td class="pl-5 pr-4 py-3"><code>carbo</code></td><td class="pr-4 py-3 text-gray-500">number</td><td class="pr-4 py-3 text-gray-400">g</td><td class="py-3 text-gray-500">Karbohidrat</td></tr>
+                    <tr class="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"><td class="pl-5 pr-4 py-3"><code>fiber</code></td><td class="pr-4 py-3 text-gray-500">number</td><td class="pr-4 py-3 text-gray-400">g</td><td class="py-3 text-gray-500">Serat pangan</td></tr>
+                </tbody>
+            </table>
+            <div class="px-5 py-3 text-xs text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-800">
+                Nilai nutrisi yang tidak tersedia dikembalikan sebagai <code>0</code>.
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== CONTOH PEMAKAIAN ===== -->
+    <section class="mb-14 animate-fade-up">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
+            <span class="w-1 h-6 bg-blue-600 dark:bg-blue-400 rounded-full inline-block"></span>
+            Contoh Pemakaian
+        </h2>
+        <div class="space-y-5">
+            <!-- cURL -->
+            <div class="bg-white dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+                <div class="px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-[#1e1e2e]/50">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">cURL</span>
+                </div>
+                <div class="p-4">
+                    <pre class="bg-gray-50 dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-lg p-4 overflow-x-auto text-xs leading-relaxed max-h-48 overflow-y-auto"><code class="text-gray-800 dark:text-gray-200 whitespace-pre">curl https://nutriapi.konfig.id/foods?code=AP001
+
+# Dengan paginasi
+curl "https://nutriapi.konfig.id/foods?_page=1&_limit=5"
+
+# Cari makanan
+curl "https://nutriapi.konfig.id/foods?name_like=tempe"</code></pre>
+                </div>
+            </div>
+
+            <!-- JavaScript -->
+            <div class="bg-white dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+                <div class="px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-[#1e1e2e]/50">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">JavaScript</span>
+                </div>
+                <div class="p-4">
+                    <pre class="bg-gray-50 dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-lg p-4 overflow-x-auto text-xs leading-relaxed max-h-48 overflow-y-auto"><code class="text-gray-800 dark:text-gray-200 whitespace-pre">// Cari berdasarkan nama
+const res = await fetch("https://nutriapi.konfig.id/foods?name_like=ayam");
+const data = await res.json();
+
+// Akses header paginasi
+const total = res.headers.get("X-Total-Count");
+console.log(`Ditemukan ${total} data`);
+console.log(data);
+
+// Ambil satu data berdasarkan kode
+const single = await fetch("https://nutriapi.konfig.id/foods?code=AP001")
+  .then(r => r.json());
+console.log(single.name); // "Abon Ayam"</code></pre>
+                </div>
+            </div>
+
+            <!-- Python -->
+            <div class="bg-white dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+                <div class="px-5 py-2.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-[#1e1e2e]/50">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Python</span>
+                </div>
+                <div class="p-4">
+                    <pre class="bg-gray-50 dark:bg-[#1e1e2e] border border-gray-200 dark:border-gray-800 rounded-lg p-4 overflow-x-auto text-xs leading-relaxed max-h-48 overflow-y-auto"><code class="text-gray-800 dark:text-gray-200 whitespace-pre">import requests
+
+# List dengan paginasi
+r = requests.get("https://nutriapi.konfig.id/foods", params={"_page": 1, "_limit": 5})
+data = r.json()
+print(f"Total: {r.headers['X-Total-Count']}")
+
+# Cari berdasarkan kode
+r = requests.get("https://nutriapi.konfig.id/foods", params={"code": "AP001"})
+print(r.json())
+
+# Cari berdasarkan nama
+r = requests.get("https://nutriapi.konfig.id/search", params={"q": "tempe"})
+for food in r.json():
+    print(food["name"], "-", food["calories"], "kcal")</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="text-center pt-8 border-t border-gray-200 dark:border-gray-800 animate-fade-up">
+        <p class="text-sm text-gray-400 dark:text-gray-500">
+            nutriapi &mdash; API data nutrisi pangan Indonesia &nbsp;·&nbsp;
+            <a href="https://github.com/imamfauziandrian/nutriapi" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline font-medium">GitHub</a>
+        </p>
+    </footer>
+
+</div>
+
+</body>
 </html>
