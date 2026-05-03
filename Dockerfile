@@ -24,6 +24,7 @@ RUN bun install -g json-server@0.17.4
 
 # Copy only the generated database from the builder stage
 COPY --from=builder /app/data/db.json ./data/db.json
+COPY public/ ./public/
 
 # Expose the default port
 EXPOSE 3000
