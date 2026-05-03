@@ -58,5 +58,6 @@ Indonesian Nutrition Data API (`nutriapi`). Converts CSV nutritional datasets (T
 
 - `data/json/` and `data/db.json` are gitignored — they are build artifacts
 - Raw CSV files in `data/raw/` are the source of truth
-- json-server v1 is used (beta, not the legacy v0.x)
+- json-server v0.17.4 is used
+- Static files from `./public/` are served automatically at `GET /`
 - The output `db.json` is minified (single line) and wrapped as `{ "foods": [...] }`

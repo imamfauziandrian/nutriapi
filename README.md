@@ -39,9 +39,9 @@ docker run -d --name nutriapi -p 3000:3000 nutriapi
 # Query
 curl http://localhost:3000/foods
 curl http://localhost:3000/foods?code=AP001
-curl http://localhost:3000/foods?calories_lt=100
+curl http://localhost:3000/foods?calories_gte=0&calories_lte=100
 curl http://localhost:3000/foods?_page=1&_limit=20
-curl "http://localhost:3000/foods?name:contains=nasi"
+curl http://localhost:3000/foods?name_like=nasi
 ```
 
 ## Development Scripts
@@ -72,15 +72,15 @@ data/raw/*.csv   →   src/convert.ts   →   data/json/*.json
 
 ## API (json-server)
 
-The container runs json-server v1, providing full REST capabilities:
+The container runs json-server v0.17.4 with `--read-only` mode, providing these GET endpoints:
 
 - `GET /foods` — list all
 - `GET /foods/:id` — by auto-assigned id
 - `GET /foods?field=value` — exact match (e.g. `?code=AP001`)
 - `GET /foods?field_gte=value&field_lte=value` — range filter
-- `GET /foods?name:contains=<query>` — substring search (e.g. `?name:contains=nasi`)
+- `GET /foods?name_like=<query>` — substring search (e.g. `?name_like=nasi`)
 - `GET /foods?_page=1&_limit=20` — pagination
-- `POST /foods`, `PATCH /foods/:id`, `DELETE /foods/:id`
+- `GET /` — serves static files from `./public/`
 
 ## Tech Stack
 
@@ -88,5 +88,5 @@ The container runs json-server v1, providing full REST capabilities:
 |---|---|
 | Runtime | [Bun](https://bun.sh) |
 | Database | JSON file (minified) |
-| API Server | [json-server](https://github.com/typicode/json-server) v1 |
+| API Server | [json-server](https://github.com/typicode/json-server) v0.17.4 |
 | Build | Docker multi-stage

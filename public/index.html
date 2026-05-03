@@ -399,20 +399,20 @@
                     <div class="endpoint">
                         <span class="method get">GET</span>
                         <span class="url"
-                            ><a href="/foods?name:contains=rice" target="_blank"
-                                >/foods?name:contains=rice</a
+                            ><a href="/foods?name_like=rice" target="_blank"
+                                >/foods?name_like=rice</a
                             ></span
                         >
-                        <span class="desc">Substring search on name</span>
+                        <span class="desc">Substring (regex) search on name</span>
                     </div>
                     <div class="endpoint">
                         <span class="method get">GET</span>
                         <span class="url"
-                            ><a href="/foods?calories_lt=100" target="_blank"
-                                >/foods?calories_lt=100</a
+                            ><a href="/foods?calories_gte=0&amp;calories_lte=100" target="_blank"
+                                >/foods?calories_gte=0&amp;calories_lte=100</a
                             ></span
                         >
-                        <span class="desc">Range filter (&#60; 100 kcal)</span>
+                        <span class="desc">Range filter (0–100 kcal)</span>
                     </div>
                     <div class="endpoint">
                         <span class="method get">GET</span>
@@ -427,10 +427,7 @@
                     </div>
                 </div>
                 <p style="font-size: 0.9rem; color: var(--text-dim)">
-                    All endpoints are <strong>read-only</strong> (<code
-                        >--read-only</code
-                    >
-                    mode).
+                    All endpoints are <strong>read-only</strong> (<code>--read-only</code> mode). Static files from <code>./public/</code> are served at <code>GET /</code>.
                 </p>
             </section>
 
