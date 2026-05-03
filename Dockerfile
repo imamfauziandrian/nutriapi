@@ -20,7 +20,7 @@ FROM oven/bun:alpine
 WORKDIR /app
 
 # Install json-server globally so it's available as a CLI command
-RUN bun install -g json-server
+RUN bun install -g json-server@0.17.4
 
 # Copy only the generated database from the builder stage
 COPY --from=builder /app/data/db.json ./data/db.json
@@ -29,4 +29,4 @@ COPY --from=builder /app/data/db.json ./data/db.json
 EXPOSE 3000
 
 # Start the server
-CMD ["json-server", "--watch", "data/db.json", "--host", "0.0.0.0"]
+CMD ["json-server", "--watch", "data/db.json", "--host", "0.0.0.0", "--read-only"]
