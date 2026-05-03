@@ -1,34 +1,30 @@
 # =============================================================================
 # NutriAPI — Docker Compose
 #
-# Profiles:
-#   json-server  — json-server on port 3000, GET /foods
-#   meilisearch  — Meilisearch + search API on port 3001, GET /search
-#   all          — runs both json-server AND meilisearch side by side
-#
 # Usage:
-#   docker compose --profile json-server up       # original deployment
-#   docker compose --profile meilisearch up       # meilisearch only
-#   docker compose --profile all up               # both together
+#   docker compose up                    # all services
+#   docker compose up standalone         # Bun server only (port 3000)
+#   docker compose up meilisearch ingest # Meilisearch + index (standalone proxies /search)
 # =============================================================================
 
 services:
   # ===========================================================================
-  # json-server — original deployment (port 3000)
+  # standalone — Bun HTTP server (port 3000): /foods, /search, /health, /
   # ===========================================================================
-  json-server:
-    profiles: [json-server, all]
+  standalone:
     build:
       context: .
       dockerfile: Dockerfile
+      target: standalone
     ports:
       - "3000:3000"
+    environment:
+      MEILI_URL: http://meilisearch:7700
 
   # ===========================================================================
   # meilisearch — search engine (internal, port 7700)
   # ===========================================================================
   meilisearch:
-    profiles: [meilisearch, all]
     image: getmeili/meilisearch:v1.14
     volumes:
       - meili_data:/meili_data
@@ -45,31 +41,12 @@ services:
   # ingest — one-shot, indexes db.json into Meilisearch
   # ===========================================================================
   ingest:
-    profiles: [meilisearch, all]
     build:
       context: .
-      dockerfile: Dockerfile.search
+      dockerfile: Dockerfile
       target: ingest
     environment:
       MEILI_URL: http://meilisearch:7700
-    depends_on:
-      meilisearch:
-        condition: service_healthy
-
-  # ===========================================================================
-  # search-api — Bun HTTP proxy (port 3001, GET /search)
-  # ===========================================================================
-  search-api:
-    profiles: [meilisearch, all]
-    build:
-      context: .
-      dockerfile: Dockerfile.search
-      target: search-api
-    ports:
-      - "3001:3001"
-    environment:
-      MEILI_URL: http://meilisearch:7700
-      PORT: "3001"
     depends_on:
       meilisearch:
         condition: service_healthy

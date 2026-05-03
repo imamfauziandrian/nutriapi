@@ -1,33 +1,44 @@
-# ---- Stage 1: Build ----
+# Stages: builder → ingest (named), standalone (default)
+#
+# =============================================================================
+# Stage 1: Builder — runs the CSV→JSON pipeline to produce data/db.json
+# =============================================================================
 FROM oven/bun:alpine AS builder
 
 WORKDIR /app
 
-# Copy dependency manifests
 COPY package.json ./
 RUN bun install
 
-# Copy source scripts and raw data
 COPY src/ ./src/
 COPY data/raw/ ./data/raw/
 
-# Run the converter & merger (Bun runs TypeScript natively)
 RUN bun src/convert.ts && bun src/merge.ts
 
-# ---- Stage 2: Production ----
-FROM oven/bun:alpine
+# =============================================================================
+# Stage 2: Ingest — one-shot container that indexes db.json into Meilisearch
+# =============================================================================
+FROM oven/bun:alpine AS ingest
 
 WORKDIR /app
 
-# Install json-server globally so it's available as a CLI command
-RUN bun install -g json-server@0.17.4
-
-# Copy only the generated database from the builder stage
 COPY --from=builder /app/data/db.json ./data/db.json
+COPY src/meilisearch-ingest.ts ./src/
+
+CMD ["bun", "src/meilisearch-ingest.ts"]
+
+# =============================================================================
+# Stage 3: Standalone (default) — full Bun HTTP server, foods API + search
+# =============================================================================
+FROM oven/bun:alpine AS standalone
+
+WORKDIR /app
+
+COPY --from=builder /app/data/db.json ./data/db.json
+COPY --from=builder /app/src/search-api.ts ./src/search-api.ts
 COPY public/ ./public/
 
-# Expose the default port
+ENV PORT=3000
 EXPOSE 3000
 
-# Start the server
-CMD ["json-server", "--watch", "data/db.json", "--host", "0.0.0.0", "--read-only"]
+CMD ["bun", "src/search-api.ts"]

@@ -1,14 +1,17 @@
 {
   "name": "nutriapi-csv-converter",
   "version": "1.0.0",
-  "description": "Convert CSV nutritional data files to JSON",
+  "description": "Indonesian Nutrition Data API — CSV to JSON pipeline + Bun HTTP server",
   "type": "module",
   "scripts": {
-    "convert": "npx tsx src/convert.ts",
-    "merge": "npx tsx src/merge.ts",
-    "build:all": "npx tsx src/convert.ts && npx tsx src/merge.ts"
+    "convert": "bun src/convert.ts",
+    "merge": "bun src/merge.ts",
+    "build:all": "bun src/convert.ts && bun src/merge.ts",
+    "start": "bun src/search-api.ts",
+    "dev": "bun --watch src/search-api.ts"
   },
   "devDependencies": {
+    "@types/bun": "^1.3.13",
     "@types/node": "^25.6.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
