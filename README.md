@@ -9,8 +9,10 @@ Uses [Bun](https://bun.sh) as the runtime — TypeScript runs natively without `
 | Source | Records | Description |
 |---|---|---|
 | **TKPI** | 1,148 | Indonesian Food Composition Table (*Tabel Komposisi Pangan Indonesia*) |
-| **USDA** | 8,790 | USDA National Nutrient Database (sourced via andrafarm.com) |
-| **Total** | 9,938 | Merged into `/foods` endpoint |
+| **USDA (original)** | 8,790 | USDA National Nutrient Database (sourced via andrafarm.com) |
+| **USDA Foundation** | 363 | USDA FoodData Central Foundation Foods |
+| **USDA FNDDS** | 5,432 | USDA FoodData Central Survey/FNDDS Foods |
+| **Total** | 15,733 | Merged into `/foods` endpoint |
 
 ## Fields
 
@@ -67,6 +69,7 @@ All scripts are in `src/` and use TypeScript via Bun.
 | `bun run convert` | Convert `data/raw/*.csv` → `data/json/*.json` |
 | `bun run merge` | Merge all JSON files → `data/db.json` with duplicate check |
 | `bun run build:all` | Run convert + merge in sequence |
+| `bun run fetch-usda` | Fetch USDA data from URL and save as CSV |
 | `bun run start` | Start the Bun HTTP server |
 | `bun run dev` | Start with file watch for hot reload |
 
@@ -74,13 +77,13 @@ All scripts are in `src/` and use TypeScript via Bun.
 
 ```
 data/raw/*.csv   →   src/convert.ts   →   data/json/*.json
-                                             ↓
-                                     src/merge.ts  (dedup check)
-                                             ↓
-                                        data/db.json
-                                             ↓
-                                     src/search-api.ts
-                                      (Bun HTTP server)
+                        ↑                        ↓
+                        │                src/merge.ts  (dedup check)
+                        │                        ↓
+            src/fetch-usda.ts            data/db.json
+           (download from USDA)                 ↓
+                                        src/search-api.ts
+                                         (Bun HTTP server)
 ```
 
 ### CSV Format
@@ -88,6 +91,21 @@ data/raw/*.csv   →   src/convert.ts   →   data/json/*.json
 - Separator: `;` (semicolon)
 - Decimal: `,` (comma) — auto-converted to `.`
 - `-` → `0` for nutrition columns
+
+## Fetching USDA Data
+
+The `fetch-usda` script downloads and converts USDA FoodData Central data to CSV format.
+
+```bash
+# Fetch all USDA data sources
+bun run fetch-usda
+```
+
+This will download and convert:
+- **Foundation Foods** → `data/raw/usda-foundation.csv`
+- **Survey/FNDDS Foods** → `data/raw/usda-fndds.csv`
+
+After fetching, run `bun run build:all` to rebuild the database.
 
 ## API Endpoints
 
@@ -132,8 +150,8 @@ Response body:
 
 Response headers:
 ```
-X-Total-Count: 9938
-X-Total-Pages: 4969
+X-Total-Count: 15733
+X-Total-Pages: 7867
 X-Page: 1
 X-Limit: 2
 ```

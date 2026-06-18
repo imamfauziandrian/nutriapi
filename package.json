@@ -8,7 +8,8 @@
     "merge": "bun src/merge.ts",
     "build:all": "bun src/convert.ts && bun src/merge.ts",
     "start": "bun src/search-api.ts",
-    "dev": "bun --watch src/search-api.ts"
+    "dev": "bun --watch src/search-api.ts",
+    "fetch-usda": "bun src/fetch-usda.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.3.13",

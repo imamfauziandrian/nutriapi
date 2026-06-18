@@ -146,3 +146,6 @@ vite.config.ts.timestamp-*
 # json data
 data/json
 data/db.json
+
+# temp data
+data/temp

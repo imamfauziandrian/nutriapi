@@ -20,11 +20,14 @@ Indonesian Nutrition Data API (`nutriapi`). Converts CSV nutritional datasets (T
 │   ├── convert.ts         # CSV → JSON converter
 │   ├── merge.ts           # Merge + dedup → db.json
 │   ├── search-api.ts      # Bun HTTP server (main API)
-│   └── meilisearch-ingest.ts  # One-shot Meilisearch indexer
+│   ├── meilisearch-ingest.ts  # One-shot Meilisearch indexer
+│   └── fetch-usda.ts      # Fetch USDA data from URL
 ├── data/
 │   ├── raw/               # Source CSV files (input)
 │   │   ├── tkpi.csv
-│   │   └── usda.csv
+│   │   ├── usda.csv
+│   │   ├── usda-foundation.csv    # Foundation data (generated)
+│   │   └── usda-fndds.csv         # Survey/FNDDS data (generated)
 │   ├── json/              # Per-file JSON output (gitignored)
 │   └── db.json            # Merged result (gitignored)
 ├── public/
@@ -52,6 +55,7 @@ Indonesian Nutrition Data API (`nutriapi`). Converts CSV nutritional datasets (T
 | `bun src/merge.ts` | Merge all JSON files → `data/db.json` + duplicate code check |
 | `bun run start` | Start the Bun HTTP server (port 3000) |
 | `bun run dev` | Start with watch mode |
+| `bun run fetch-usda` | Fetch USDA data from URL and save as usda-en.csv |
 | `docker build -t nutriapi .` | Build the production image |
 | `docker run -p 3000:3000 nutriapi` | Run the API |
 
