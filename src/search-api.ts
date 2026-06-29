@@ -10,7 +10,7 @@
  *   PORT      – HTTP listen port (default: 3000)
  */
 
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 // ---------------------------------------------------------------------------
@@ -47,6 +47,10 @@ interface FoodRecord {
 
 let foods: FoodRecord[] = [];
 let codeIndex: Map<string, FoodRecord> = new Map();
+let dbMtimeMs: number = 0;
+let meiliReachable: boolean | null = null;
+let meiliLastChecked: number = 0;
+const MEILI_PROBE_TTL_MS = 30_000;
 
 function loadData(): void {
   if (!existsSync(DB_PATH)) {
@@ -59,26 +63,75 @@ function loadData(): void {
   const db = JSON.parse(raw) as { foods?: FoodRecord[] };
   foods = db.foods ?? [];
   codeIndex = new Map(foods.map((f) => [f.code, f]));
+  dbMtimeMs = statSync(DB_PATH).mtimeMs;
 
   console.log(`Loaded ${foods.length} food records from data/db.json`);
+}
+
+/**
+ * Probe Meilisearch health. Cached for MEILI_PROBE_TTL_MS to avoid hitting
+ * the upstream on every /health call.
+ */
+async function probeMeili(): Promise<boolean> {
+  const now = Date.now();
+  if (meiliReachable !== null && now - meiliLastChecked < MEILI_PROBE_TTL_MS) {
+    return meiliReachable;
+  }
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 1500);
+    const resp = await fetch(`${MEILI_URL}/health`, { signal: ctrl.signal });
+    clearTimeout(timer);
+    meiliReachable = resp.ok;
+  } catch {
+    meiliReachable = false;
+  }
+  meiliLastChecked = now;
+  return meiliReachable;
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function respond(body: unknown, status = 200, extraHeaders?: Record<string, string>): Response {
+/**
+ * Generate a weak ETag from the db.json mtime. Same mtime = same bytes from
+ * the server's perspective, safe for caching given data is immutable per build.
+ */
+function dataETag(): string {
+  return `W/"${Math.floor(dbMtimeMs).toString(36)}"`;
+}
+
+function respond(
+  body: unknown,
+  status = 200,
+  extraHeaders?: Record<string, string>,
+): Response {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Expose-Headers": "X-Total-Count, X-Total-Pages, X-Page, X-Limit",
+    "Access-Control-Expose-Headers":
+      "X-Total-Count, X-Total-Pages, X-Page, X-Limit, ETag",
+    Vary: "Accept-Encoding, Origin",
   };
   if (extraHeaders) {
     Object.assign(headers, extraHeaders);
   }
   return new Response(JSON.stringify(body), { status, headers });
+}
+
+function respond304(extraHeaders?: Record<string, string>): Response {
+  const headers: Record<string, string> = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Expose-Headers": "X-Total-Count, X-Total-Pages, X-Page, X-Limit, ETag",
+    Vary: "Accept-Encoding, Origin",
+  };
+  if (extraHeaders) {
+    Object.assign(headers, extraHeaders);
+  }
+  return new Response(null, { status: 304, headers });
 }
 
 function corsPreflight(): Response {
@@ -158,6 +211,7 @@ function getPaginatedFoods(
   page: number,
   limit: number,
   filteredFoods?: FoodRecord[],
+  etag?: string,
 ): Response {
   const source = filteredFoods ?? foods;
   const clampedPage = Math.max(1, page);
@@ -168,36 +222,97 @@ function getPaginatedFoods(
   const endIndex = Math.min(startIndex + clampedLimit, total);
   const data = source.slice(startIndex, endIndex);
 
-  return respond(data, 200, {
+  const headers: Record<string, string> = {
     "X-Total-Count": String(total),
     "X-Total-Pages": String(totalPages),
     "X-Page": String(clampedPage),
     "X-Limit": String(clampedLimit),
-  });
+    ETag: etag ?? dataETag(),
+  };
+  return respond(data, 200, headers);
 }
 
-async function handleFoods(url: URL): Promise<Response> {
-  const code = url.searchParams.get("code");
-  const nameLike = url.searchParams.get("name_like");
+/**
+ * Parse and validate the `_page` / `_limit` query params.
+ * Returns either the resolved values or a 400 Response explaining the problem.
+ */
+function parsePagination(url: URL):
+  | { ok: true; page: number; limit: number }
+  | { ok: false; response: Response } {
   const pageStr = url.searchParams.get("_page");
   const limitStr = url.searchParams.get("_limit");
 
-  // Get by code takes precedence
+  let page = DEFAULT_PAGE;
+  if (pageStr !== null) {
+    const n = Number(pageStr);
+    if (!Number.isInteger(n) || n < 1) {
+      return {
+        ok: false,
+        response: respond(
+          { error: `Invalid '_page' value: '${pageStr}'. Must be a positive integer.` },
+          400,
+        ),
+      };
+    }
+    page = n;
+  }
+
+  let limit = DEFAULT_LIMIT;
+  if (limitStr !== null) {
+    const n = Number(limitStr);
+    if (!Number.isInteger(n) || n < 1) {
+      return {
+        ok: false,
+        response: respond(
+          { error: `Invalid '_limit' value: '${limitStr}'. Must be a positive integer.` },
+          400,
+        ),
+      };
+    }
+    limit = n;
+  }
+
+  return { ok: true, page, limit };
+}
+
+/**
+ * If the request carries `If-None-Match` matching our current ETag, return a
+ * 304 Response (headers only). Otherwise return null and the caller will
+ * respond normally.
+ */
+function checkNotModified(req: Request, etag: string): Response | null {
+  const inm = req.headers.get("If-None-Match");
+  if (inm && inm === etag) {
+    return respond304({ ETag: etag });
+  }
+  return null;
+}
+
+async function handleFoods(req: Request, url: URL): Promise<Response> {
+  const code = url.searchParams.get("code");
+  const nameLike = url.searchParams.get("name_like");
+
+  // Get by code takes precedence (no pagination, no ETag — single resource lookup)
   if (code !== null && code.trim() !== "") {
     return getFoodByCode(code.trim());
   }
 
-  const page = pageStr ? parseInt(pageStr, 10) : DEFAULT_PAGE;
-  const limit = limitStr ? parseInt(limitStr, 10) : DEFAULT_LIMIT;
-  const resolvedPage = Number.isNaN(page) ? DEFAULT_PAGE : page;
-  const resolvedLimit = Number.isNaN(limit) ? DEFAULT_LIMIT : limit;
+  const parsed = parsePagination(url);
+  if (!parsed.ok) return parsed.response;
+  const { page, limit } = parsed;
 
   // Full-text search via Meilisearch when name_like is provided
   if (nameLike !== null && nameLike.trim() !== "") {
-    return handleNameLikeSearch(nameLike.trim(), resolvedPage, resolvedLimit);
+    const etag = dataETag();
+    const notModified = checkNotModified(req, etag);
+    if (notModified) return notModified;
+    return handleNameLikeSearch(nameLike.trim(), page, limit, etag);
   }
 
-  return getPaginatedFoods(resolvedPage, resolvedLimit);
+  const etag = dataETag();
+  const notModified = checkNotModified(req, etag);
+  if (notModified) return notModified;
+  return getPaginatedFoods(page, limit, undefined, etag);
 }
 
 // ---------------------------------------------------------------------------
@@ -276,7 +391,12 @@ async function searchMeili(q: string, page: number, limit: number): Promise<Meil
   }
 }
 
-async function handleNameLikeSearch(q: string, page: number, limit: number): Promise<Response> {
+async function handleNameLikeSearch(
+  q: string,
+  page: number,
+  limit: number,
+  etag?: string,
+): Promise<Response> {
   const clampedPage = Math.max(1, page);
   const clampedLimit = Math.min(Math.max(1, limit), MAX_LIMIT);
 
@@ -288,6 +408,7 @@ async function handleNameLikeSearch(q: string, page: number, limit: number): Pro
     "X-Total-Pages": String(totalPages),
     "X-Page": String(clampedPage),
     "X-Limit": String(clampedLimit),
+    ETag: etag ?? dataETag(),
   });
 }
 
@@ -295,28 +416,30 @@ async function handleNameLikeSearch(q: string, page: number, limit: number): Pro
 // Search endpoint (Meilisearch, same paginated format as /foods)
 // ---------------------------------------------------------------------------
 
-async function handleSearch(url: URL): Promise<Response> {
+async function handleSearch(req: Request, url: URL): Promise<Response> {
   const q = url.searchParams.get("q")?.trim();
-  const pageStr = url.searchParams.get("_page");
-  const limitStr = url.searchParams.get("_limit");
 
   if (!q) {
     return respond({ error: "Missing 'q' query parameter. Example: /search?q=ayam" }, 400);
   }
 
-  const page = pageStr ? parseInt(pageStr, 10) : DEFAULT_PAGE;
-  const limit = limitStr ? parseInt(limitStr, 10) : DEFAULT_LIMIT;
-  const resolvedPage = Number.isNaN(page) ? DEFAULT_PAGE : page;
-  const resolvedLimit = Number.isNaN(limit) ? DEFAULT_LIMIT : limit;
+  const parsed = parsePagination(url);
+  if (!parsed.ok) return parsed.response;
+  const { page, limit } = parsed;
 
-  const { hits, total } = await searchMeili(q, resolvedPage, resolvedLimit);
-  const totalPages = Math.ceil(total / resolvedLimit) || 1;
+  const etag = dataETag();
+  const notModified = checkNotModified(req, etag);
+  if (notModified) return notModified;
+
+  const { hits, total } = await searchMeili(q, page, limit);
+  const totalPages = Math.ceil(total / limit) || 1;
 
   return respond(hits, 200, {
     "X-Total-Count": String(total),
     "X-Total-Pages": String(totalPages),
-    "X-Page": String(resolvedPage),
-    "X-Limit": String(resolvedLimit),
+    "X-Page": String(page),
+    "X-Limit": String(limit),
+    ETag: etag,
   });
 }
 
@@ -340,17 +463,28 @@ const server = Bun.serve({
 
     // Health check
     if (pathname === "/health") {
-      return respond({ status: "ok" });
+      const meili = await probeMeili();
+      const dbLoaded = foods.length > 0;
+      const allOk = dbLoaded && meili;
+      return respond(
+        {
+          status: allOk ? "ok" : "degraded",
+          dbLoaded,
+          records: foods.length,
+          meilisearch: meili ? "reachable" : "unreachable",
+        },
+        allOk ? 200 : 503,
+      );
     }
 
     // Foods endpoint
     if (pathname === "/foods") {
-      return handleFoods(url);
+      return handleFoods(req, url);
     }
 
     // Search endpoint (Meilisearch)
     if (pathname === "/search") {
-      return handleSearch(url);
+      return handleSearch(req, url);
     }
 
     // Static files (including /)
